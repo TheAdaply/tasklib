@@ -1,0 +1,249 @@
+$ git checkout akash/due-dates
+Switched to branch 'akash/due-dates'
+
+$ git merge --no-ff --no-commit shine/labels   ; echo "exit=$?"
+Auto-merging src/tasklib/cli.py
+CONFLICT (content): Merge conflict in src/tasklib/cli.py
+Auto-merging src/tasklib/models.py
+CONFLICT (content): Merge conflict in src/tasklib/models.py
+Auto-merging src/tasklib/query.py
+CONFLICT (content): Merge conflict in src/tasklib/query.py
+Auto-merging tests/test_models.py
+CONFLICT (content): Merge conflict in tests/test_models.py
+Automatic merge failed; fix conflicts and then commit the result.
+exit=1
+
+$ git status
+On branch akash/due-dates
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Changes to be committed:
+	new file:   src/tasklib/labels.py
+	new file:   tests/test_labels.py
+
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+	both modified:   src/tasklib/cli.py
+	both modified:   src/tasklib/models.py
+	both modified:   src/tasklib/query.py
+	both modified:   tests/test_models.py
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	runs/
+
+
+$ git diff --name-only --diff-filter=U
+src/tasklib/cli.py
+src/tasklib/models.py
+src/tasklib/query.py
+tests/test_models.py
+
+$ git diff --diff-filter=U
+diff --cc src/tasklib/cli.py
+index a1a0126,0020c94..0000000
+--- a/src/tasklib/cli.py
++++ b/src/tasklib/cli.py
+@@@ -48,9 -48,11 +48,17 @@@ def build_parser() -> argparse.Argument
+      add_cmd = sub.add_parser("add", help="Add a new task.")
+      add_cmd.add_argument("title", help="Title of the task.")
+      add_cmd.add_argument(
+++<<<<<<< HEAD
+ +        "--due",
+ +        default=None,
+ +        help="Due date as an ISO date string (YYYY-MM-DD).",
+++=======
++         "--label",
++         dest="labels",
++         action="append",
++         default=None,
++         help="Attach a label (repeatable).",
+++>>>>>>> shine/labels
+      )
+  
+      list_cmd = sub.add_parser("list", help="List tasks.")
+@@@ -76,15 -78,9 +84,21 @@@
+          help="Show only tasks whose title contains this text.",
+      )
+      list_cmd.add_argument(
+++<<<<<<< HEAD
+ +        "--due-before",
+ +        dest="due_before",
+ +        default=None,
+ +        help="Show only tasks due strictly before this ISO date (YYYY-MM-DD).",
+ +    )
+ +    list_cmd.add_argument(
+ +        "--overdue",
+ +        action="store_true",
+ +        help="Show only tasks whose due date is before today.",
+++=======
++         "--label",
++         default=None,
++         help="Show only tasks carrying this label.",
+++>>>>>>> shine/labels
+      )
+  
+      done_cmd = sub.add_parser("done", help="Mark a task as complete.")
+@@@ -118,7 -114,7 +132,11 @@@ def main(argv: list[str] | None = None
+  
+      if args.command == "add":
+          task = store.add(args.title)
+++<<<<<<< HEAD
+ +        task.due = args.due
+++=======
++         task.labels = list(args.labels) if args.labels else []
+++>>>>>>> shine/labels
+          store.save(args.store)
+          print(f"Added {_format_task(task)}")
+          return 0
+@@@ -128,8 -124,7 +146,12 @@@
+              store.all(),
+              done=args.done,
+              contains=args.contains,
+++<<<<<<< HEAD
+ +            due_before=args.due_before,
+ +            overdue=args.overdue,
+++=======
++             label=args.label,
+++>>>>>>> shine/labels
+          )
+          for task in tasks:
+              print(_format_task(task))
+diff --cc src/tasklib/models.py
+index 6636f91,48ad4d4..0000000
+--- a/src/tasklib/models.py
++++ b/src/tasklib/models.py
+@@@ -19,14 -19,14 +19,22 @@@ class Task
+          title: Human-readable description of the task.
+          done: Whether the task has been completed.
+          created_at: ISO date string (``YYYY-MM-DD``) for when it was created.
+++<<<<<<< HEAD
+ +        due: Optional ISO date string (``YYYY-MM-DD``) the task is due on.
+++=======
++         labels: Free-form string labels attached to the task.
+++>>>>>>> shine/labels
+      """
+  
+      id: int
+      title: str
+      done: bool = False
+      created_at: str = ""
+++<<<<<<< HEAD
+ +    due: str | None = None
+++=======
++     labels: list[str] = field(default_factory=list)
+++>>>>>>> shine/labels
+  
+      def to_dict(self) -> dict:
+          """Serialize this task to a plain JSON-compatible dict.
+@@@ -38,7 -38,7 +46,11 @@@
+              "title": self.title,
+              "done": self.done,
+              "created_at": self.created_at,
+++<<<<<<< HEAD
+ +            "due": self.due,
+++=======
++             "labels": list(self.labels),
+++>>>>>>> shine/labels
+          }
+  
+      @classmethod
+@@@ -52,5 -52,5 +64,9 @@@
+              title=d["title"],
+              done=d["done"],
+              created_at=d["created_at"],
+++<<<<<<< HEAD
+ +            due=d.get("due"),
+++=======
++             labels=list(d.get("labels", [])),
+++>>>>>>> shine/labels
+          )
+diff --cc src/tasklib/query.py
+index bb85d15,025da7a..0000000
+--- a/src/tasklib/query.py
++++ b/src/tasklib/query.py
+@@@ -7,7 -7,7 +7,11 @@@ linear sequence of independent ``if <pa
+  
+  from __future__ import annotations
+  
+++<<<<<<< HEAD
+ +from tasklib.dates import is_overdue
+++=======
++ from tasklib.labels import normalize_label
+++>>>>>>> shine/labels
+  from tasklib.models import Task
+  
+  
+@@@ -16,8 -16,7 +20,12 @@@ def query_tasks
+      *,
+      done: bool | None = None,
+      contains: str | None = None,
+++<<<<<<< HEAD
+ +    due_before: str | None = None,
+ +    overdue: bool = False,
+++=======
++     label: str | None = None,
+++>>>>>>> shine/labels
+  ) -> list[Task]:
+      """Filter ``tasks`` by completion status and/or a title substring.
+  
+@@@ -29,9 -28,8 +37,14 @@@
+          done: If set, keep only tasks whose ``done`` matches this value.
+          contains: If set, keep only tasks whose title contains this text,
+              compared case-insensitively.
+++<<<<<<< HEAD
+ +        due_before: If set, keep only tasks with a due date strictly before
+ +            this ISO date string.
+ +        overdue: If ``True``, keep only tasks whose due date is before today.
+++=======
++         label: If set, keep only tasks carrying this label (compared in
++             normalized form).
+++>>>>>>> shine/labels
+  
+      Returns:
+          A new list of matching tasks, preserving input order.
+@@@ -45,15 -43,13 +58,26 @@@
+          needle = contains.lower()
+          result = [task for task in result if needle in task.title.lower()]
+  
+++<<<<<<< HEAD
+ +    if due_before is not None:
+ +        result = [
+ +            task
+ +            for task in result
+ +            if task.due is not None and task.due < due_before
+ +        ]
+ +
+ +    if overdue:
+ +        result = [task for task in result if is_overdue(task.due)]
+ +
+++=======
++     if label is not None:
++         wanted = normalize_label(label)
++         result = [
++             task
++             for task in result
++             if wanted in {normalize_label(lbl) for lbl in task.labels}
++         ]
++ 
+++>>>>>>> shine/labels
+      # add new filters above this line
+      return result
+diff --cc tests/test_models.py
+index bce62de,661a022..0000000
+--- a/tests/test_models.py
++++ b/tests/test_models.py
+@@@ -20,7 -20,7 +20,11 @@@ def test_to_dict_lists_every_field() -
+          "title": "ship",
+          "done": True,
+          "created_at": "2026-06-13",
+++<<<<<<< HEAD
+ +        "due": None,
+++=======
++         "labels": [],
+++>>>>>>> shine/labels
+      }
+  
+  
