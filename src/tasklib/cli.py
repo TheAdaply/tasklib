@@ -47,6 +47,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     add_cmd = sub.add_parser("add", help="Add a new task.")
     add_cmd.add_argument("title", help="Title of the task.")
+    add_cmd.add_argument(
+        "--due",
+        default=None,
+        help="Due date as an ISO date string (YYYY-MM-DD).",
+    )
 
     list_cmd = sub.add_parser("list", help="List tasks.")
     status = list_cmd.add_mutually_exclusive_group()
@@ -69,6 +74,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--contains",
         default=None,
         help="Show only tasks whose title contains this text.",
+    )
+    list_cmd.add_argument(
+        "--due-before",
+        dest="due_before",
+        default=None,
+        help="Show only tasks due strictly before this ISO date (YYYY-MM-DD).",
+    )
+    list_cmd.add_argument(
+        "--overdue",
+        action="store_true",
+        help="Show only tasks whose due date is before today.",
     )
 
     done_cmd = sub.add_parser("done", help="Mark a task as complete.")
@@ -102,12 +118,19 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "add":
         task = store.add(args.title)
+        task.due = args.due
         store.save(args.store)
         print(f"Added {_format_task(task)}")
         return 0
 
     if args.command == "list":
-        tasks = query_tasks(store.all(), done=args.done, contains=args.contains)
+        tasks = query_tasks(
+            store.all(),
+            done=args.done,
+            contains=args.contains,
+            due_before=args.due_before,
+            overdue=args.overdue,
+        )
         for task in tasks:
             print(_format_task(task))
         return 0
