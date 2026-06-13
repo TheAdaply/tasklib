@@ -47,6 +47,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     add_cmd = sub.add_parser("add", help="Add a new task.")
     add_cmd.add_argument("title", help="Title of the task.")
+    add_cmd.add_argument(
+        "--label",
+        dest="labels",
+        action="append",
+        default=None,
+        help="Attach a label (repeatable).",
+    )
 
     list_cmd = sub.add_parser("list", help="List tasks.")
     status = list_cmd.add_mutually_exclusive_group()
@@ -69,6 +76,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--contains",
         default=None,
         help="Show only tasks whose title contains this text.",
+    )
+    list_cmd.add_argument(
+        "--label",
+        default=None,
+        help="Show only tasks carrying this label.",
     )
 
     done_cmd = sub.add_parser("done", help="Mark a task as complete.")
@@ -102,12 +114,18 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "add":
         task = store.add(args.title)
+        task.labels = list(args.labels) if args.labels else []
         store.save(args.store)
         print(f"Added {_format_task(task)}")
         return 0
 
     if args.command == "list":
-        tasks = query_tasks(store.all(), done=args.done, contains=args.contains)
+        tasks = query_tasks(
+            store.all(),
+            done=args.done,
+            contains=args.contains,
+            label=args.label,
+        )
         for task in tasks:
             print(_format_task(task))
         return 0

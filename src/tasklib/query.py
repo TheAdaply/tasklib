@@ -7,6 +7,7 @@ linear sequence of independent ``if <param> is not None:`` steps over a running
 
 from __future__ import annotations
 
+from tasklib.labels import normalize_label
 from tasklib.models import Task
 
 
@@ -15,6 +16,7 @@ def query_tasks(
     *,
     done: bool | None = None,
     contains: str | None = None,
+    label: str | None = None,
 ) -> list[Task]:
     """Filter ``tasks`` by completion status and/or a title substring.
 
@@ -26,6 +28,8 @@ def query_tasks(
         done: If set, keep only tasks whose ``done`` matches this value.
         contains: If set, keep only tasks whose title contains this text,
             compared case-insensitively.
+        label: If set, keep only tasks carrying this label (compared in
+            normalized form).
 
     Returns:
         A new list of matching tasks, preserving input order.
@@ -38,6 +42,14 @@ def query_tasks(
     if contains is not None:
         needle = contains.lower()
         result = [task for task in result if needle in task.title.lower()]
+
+    if label is not None:
+        wanted = normalize_label(label)
+        result = [
+            task
+            for task in result
+            if wanted in {normalize_label(lbl) for lbl in task.labels}
+        ]
 
     # add new filters above this line
     return result

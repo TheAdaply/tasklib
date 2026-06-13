@@ -7,7 +7,7 @@ change rather than hidden behind a loop or reflection.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -19,12 +19,14 @@ class Task:
         title: Human-readable description of the task.
         done: Whether the task has been completed.
         created_at: ISO date string (``YYYY-MM-DD``) for when it was created.
+        labels: Free-form string labels attached to the task.
     """
 
     id: int
     title: str
     done: bool = False
     created_at: str = ""
+    labels: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         """Serialize this task to a plain JSON-compatible dict.
@@ -36,6 +38,7 @@ class Task:
             "title": self.title,
             "done": self.done,
             "created_at": self.created_at,
+            "labels": list(self.labels),
         }
 
     @classmethod
@@ -49,4 +52,5 @@ class Task:
             title=d["title"],
             done=d["done"],
             created_at=d["created_at"],
+            labels=list(d.get("labels", [])),
         )
