@@ -3,9 +3,14 @@
 Subcommands:
 
 - ``add <title>``                       create a task
-- ``list [--done/--undone] [--contains TEXT]``  list tasks, optionally filtered
+- ``list [--done/--undone] [--contains TEXT] [registered filter flags]``
+  list tasks, optionally filtered
 - ``done <id>``                         mark a task complete
 - ``rm <id>``                           delete a task
+
+The ``list`` command grows one flag per registered filter automatically: the
+parser iterates :mod:`tasklib.filters` and forwards each flag's value to
+``query_tasks``, so a new filter module needs no edit here.
 
 State is persisted as JSON. The path defaults to ``~/.tasklib.json`` and can be
 overridden with ``--store``.
@@ -17,6 +22,7 @@ import argparse
 from pathlib import Path
 
 from tasklib import __version__
+from tasklib import filters as filters_registry
 from tasklib.errors import TaskNotFound
 from tasklib.models import Task
 from tasklib.query import query_tasks
@@ -70,6 +76,21 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Show only tasks whose title contains this text.",
     )
+    # One flag per registered filter, discovered from tasklib.filters. The
+    # argparse ``dest`` is the filter's ``name`` so values forward straight into
+    # query_tasks(**{name: value}). Adding a filter module needs no edit here.
+    for spec in filters_registry.registry():
+        if spec.takes_value:
+            list_cmd.add_argument(
+                spec.cli_flag, dest=spec.name, default=None, help=spec.help
+            )
+        else:
+            list_cmd.add_argument(
+                spec.cli_flag,
+                dest=spec.name,
+                action="store_true",
+                help=spec.help,
+            )
 
     done_cmd = sub.add_parser("done", help="Mark a task as complete.")
     done_cmd.add_argument("id", type=int, help="Id of the task to complete.")
@@ -107,7 +128,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "list":
-        tasks = query_tasks(store.all(), done=args.done, contains=args.contains)
+        registered = {
+            spec.name: getattr(args, spec.name)
+            for spec in filters_registry.registry()
+        }
+        tasks = query_tasks(
+            store.all(),
+            done=args.done,
+            contains=args.contains,
+            **registered,
+        )
         for task in tasks:
             print(_format_task(task))
         return 0

@@ -20,6 +20,8 @@ def test_to_dict_lists_every_field() -> None:
         "title": "ship",
         "done": True,
         "created_at": "2026-06-13",
+        "due": None,
+        "labels": [],
     }
 
 
